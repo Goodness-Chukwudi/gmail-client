@@ -128,3 +128,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+#EBS env file
+.ebextensions/
+#Package build
+builds
