@@ -6,9 +6,7 @@ import { createMongooseTransaction } from "../common/utils/app_utils";
 import AppValidator from "../middlewares/validators/AppValidator";
 import { PASSWORD_UPDATE_SUCCESSFUL } from "../common/constant/success_response_message";
 import { passwordRepository } from "../services/password_service";
-import { loginSessionRepository } from "../services/login_session_service";
-import { logoutUser } from "../services/user_service";
-import { createAuthToken } from "../common/utils/auth_utils";
+import { loginUser, logoutUser } from "../services/user_service";
 
 class AppController extends BaseApiController {
     private appValidator: AppValidator;
@@ -32,7 +30,7 @@ class AppController extends BaseApiController {
     me(path:string) {
         //returns the logged in user
         this.router.get(path, (req, res) => {
-            const user = this.requestUtils.getLoggedInUser();
+            const user = this.requestUtils.getRequestUser();
             this.sendSuccessResponse(res, user);
         })
     }
@@ -67,41 +65,27 @@ class AppController extends BaseApiController {
             this.userMiddleWare.hashNewPassword
         );
 
-        this.router.patch(path, async (req, res, next) => {
+        this.router.patch(path, async (req, res) => {
             const session = await createMongooseTransaction();
             try {
-                const loggedInUser = this.requestUtils.getLoggedInUser();
+                const user = this.requestUtils.getRequestUser();
                 const previousPassword = this.requestUtils.getDataFromState(USER_PASSWORD_LABEL);
 
                 const passwordData = {
                     password: req.body.password,
-                    email: loggedInUser.email,
-                    user: loggedInUser.id
+                    email: user.email,
+                    user: user.id
                 }
                 await passwordRepository.save(passwordData, session);
                 //Deactivate old password
                 await passwordRepository.updateById(previousPassword.id, {status: PASSWORD_STATUS.DEACTIVATED}, session);
-                next();
+
+                await logoutUser(user.id);
+                const token = await loginUser(user.id);
+        
+                this.sendSuccessResponse(res, {message: PASSWORD_UPDATE_SUCCESSFUL, token: token}, session);
             } catch (error:any) {
                 this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500, session) 
-            }
-        });
-
-        this.router.patch(path, async (req, res) => {
-            try {
-                const user = this.requestUtils.getLoggedInUser();
-                await logoutUser(user.id);
-    
-                const loginSessionData = {
-                    user: user.id,
-                    status: BIT.ON
-                };
-                const loginSession = await loginSessionRepository.save(loginSessionData);
-                const token = createAuthToken(user.id, loginSession.id);
-        
-                this.sendSuccessResponse(res, {message: PASSWORD_UPDATE_SUCCESSFUL, token: token});                
-            } catch (error: any) {
-                this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
             }
         });
     }

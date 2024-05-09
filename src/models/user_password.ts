@@ -7,7 +7,7 @@ const ObjectId = Schema.Types.ObjectId;
 
 const UserPasswordSchema = new Schema<Record<keyof IUserPassword, any>>({
     password: {type: String, required: true},
-    email: {type: String, required: true, index: true},
+    email: {type: String, required: true, index: true, unique: true},
     user: { type: ObjectId, required: true, ref: MODEL_NAMES.USER},
     status: { type: String, default: PASSWORD_STATUS.ACTIVE, enum: Object.values(PASSWORD_STATUS)}
 },

@@ -31,8 +31,8 @@ class Logger {
                 db: Env.MONGODB_URI,
                 options: {
                     dbName: "mainstack-test-logs",
-                    useNewUrlParser: true,
-                    useUnifiedTopology: true,
+                    // useNewUrlParser: true,
+                    // useUnifiedTopology: true,
                 },
             })
         ); 

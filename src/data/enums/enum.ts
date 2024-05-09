@@ -1,43 +1,43 @@
 
-enum GENDER {
-    MALE = "male",
-    FEMALE = "female",
-    OTHER = "others"
-};
+const GENDER = Object.freeze({
+    MALE: "male",
+    FEMALE: "female",
+    OTHER: "others"
+});
 
-enum BIT {
-    ON = 1,
-    OFF = 0
-};
+const BIT = Object.freeze({
+    ON: 1,
+    OFF: 0
+});
 
-enum SEQUENCE_COUNTER_TYPES {
-    PRODUCT_CODE = "product"
-};
+const SEQUENCE_COUNTER_TYPES = Object.freeze({
+    PRODUCT_CODE: "product"
+});
 
-enum PASSWORD_STATUS {
-    ACTIVE = "active",
-    DEACTIVATED = "deactivated",
-    COMPROMISED = "compromised",
-    BLACKLISTED = "blacklisted"
-};
+const PASSWORD_STATUS = Object.freeze({
+    ACTIVE: "active",
+    DEACTIVATED: "deactivated",
+    COMPROMISED: "compromised",
+    BLACKLISTED: "blacklisted"
+});
 
-enum ITEM_STATUS {
-    OPEN= 'open',
-    CREATED= 'created',
-    PENDING= 'pending',
-    IN_REVIEW= 'in review',
-    ACTIVE= 'active',
-    DEACTIVATED= 'deactivated',
-    DELETED= 'deleted',
-    ARCHIVED= 'archived',
-    SUSPENDED= 'suspended',
-    HIDDEN= 'hidden',
-    CLOSED= 'closed',
-    APPROVED= 'approved',
-    REJECTED= 'rejected',
-    USED= 'used',
-    SkIPPED= 'skipped',
-};
+const ITEM_STATUS = Object.freeze({
+    OPEN: 'open',
+    CREATED: 'created',
+    PENDING: 'pending',
+    IN_REVIEW: 'in review',
+    ACTIVE: 'active',
+    DEACTIVATED: 'deactivated',
+    DELETED: 'deleted',
+    ARCHIVED: 'archived',
+    SUSPENDED: 'suspended',
+    HIDDEN: 'hidden',
+    CLOSED: 'closed',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    USED: 'used',
+    SkIPPED: 'skipped',
+});
 
 
 export {

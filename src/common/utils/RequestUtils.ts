@@ -40,7 +40,7 @@ class RequestUtils {
     /**
      * @returns {IUserDocument} an object containing details of the logged in user.
     */
-    getLoggedInUser() {
+    getRequestUser() {
         return this.response.locals.user as IUserDocument;
     }
 

@@ -58,7 +58,7 @@ const INVALID_LOGIN = Object.freeze({
 
 const INVALID_TOKEN = Object.freeze({
     response_code: 11,
-    message: "Unable to authenticate request. Please login again",
+    message: "Unable to authenticate request. Please login to continue",
 });
 
 const actionNotPermitted = (action: string) => {
@@ -87,7 +87,7 @@ const UNABLE_TO_LOGIN = Object.freeze({
 
 const INVALID_SESSION_USER = Object.freeze({
     response_code: 16,
-    message: "Unable to validate the user in this session. Please login again",
+    message: "Unauthenticated user session. Please login again",
 });
 
 const PASSWORD_MISMATCH = Object.freeze({

@@ -30,8 +30,8 @@ export class AuthMiddleware extends BaseRouterMiddleware {
                 } else {
                     const data:AuthTokenPayload = decoded.data;
                     const query = {_id: data.loginSession, user: data.user, status: BIT.ON };
-                    const loginSession = await loginSessionRepository.findOneAndPopulate(query);
-                    if (loginSession.id) {                
+                    const loginSession = await loginSessionRepository.findOneAndPopulate(query, ["user"]);
+                    if (loginSession) {                
                         const user = loginSession.user;
                         await this.validateLoginSession(loginSession, req, res);
     
@@ -44,6 +44,7 @@ export class AuthMiddleware extends BaseRouterMiddleware {
                     }
                 }
             } catch (error:any) {
+                console.log(error)
                 this.sendErrorResponse(res, error, errorResponse.UNABLE_TO_COMPLETE_REQUEST, 401);
             }
         })

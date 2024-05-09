@@ -13,7 +13,6 @@ class AppValidator extends BaseRouterMiddleware {
         super(appRouter);
     }
 
-
     protected initializeServices() {}
 
     validateUserSignup = async ( req: Request, res: Response, next: NextFunction ) => {
@@ -24,7 +23,9 @@ class AppValidator extends BaseRouterMiddleware {
                 middle_name: Joi.string().max(50),
                 email: Joi.string().email().required(),
                 phone: Joi.string().max(50).required(),
-                gender: Joi.string().valid(...Object.values(GENDER)).required()
+                gender: Joi.string().valid(...Object.values(GENDER)).required(),
+                new_password: Joi.string().required(),
+                confirm_password: Joi.string().required()
             });
             
             await BodySchema.validateAsync(req.body, JoiValidatorOptions);

@@ -8,7 +8,7 @@ validateEnvironmentVariables()
 connectToDB()
   .then(() => {
     app.listen(Env.PORT, () => {
-      if (Env.ENVIRONMENT == ENVIRONMENTS.DEV) console.log(`Express is listening at http://localhost:${Env.PORT}${Env.API_PATH}`);
+      if (Env.ENVIRONMENT == ENVIRONMENTS.DEV) console.log(`Express is listening on http://localhost:${Env.PORT}${Env.API_PATH}`);
     });
   })
   .catch(()=> console.log("DB Connection not successful"));

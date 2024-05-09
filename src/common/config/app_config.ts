@@ -25,17 +25,17 @@ const PaginationCustomLabels = {
 
 const DbConfig = {
   dbName: "mainstack-test",
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
+  // useNewUrlParser: true,
+  // useUnifiedTopology: true,
   maxPoolSize: 100
 };
 
-enum ENVIRONMENTS {
-  PROD = "production",
-  DEV = "development",
-  UAT = "user acceptance testing",
-  STAGING = "staging"
-};
+const ENVIRONMENTS = Object.freeze({
+  PROD: "production",
+  DEV: "development",
+  UAT: "user acceptance testing",
+  STAGING: "staging"
+});
 
 export {
   JoiValidatorOptions,

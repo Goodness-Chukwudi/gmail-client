@@ -19,7 +19,7 @@ class UserMiddleware extends BaseRouterMiddleware {
 
     /**
      * A middleware that fetches a user from the db using the email provided in the request.
-     * - The fetched user is available through the getDataFromState or getLoggedInUser method of the request service
+     * - The fetched user is available through the getDataFromState or getRequestUser method of the request service
     */
     public loadUserToRequestByEmail = (req: Request, res: Response, next: NextFunction) => {
         const email = req.body.email;
@@ -29,7 +29,7 @@ class UserMiddleware extends BaseRouterMiddleware {
             return this.sendErrorResponse(res, error, errorMessage.requiredField("Email"), 400);
         }
 
-        passwordRepository.findOneAndPopulate({email: email, status: PASSWORD_STATUS.ACTIVE})
+        passwordRepository.findOneAndPopulate({email: email, status: PASSWORD_STATUS.ACTIVE}, ["user"])
             .then((password) => {
                 if (!password) {
                     return this.sendErrorResponse(res, new Error("User not found"), errorMessage.INVALID_LOGIN, 400)
@@ -91,13 +91,20 @@ class UserMiddleware extends BaseRouterMiddleware {
     */
     public validatePassword = async (req: Request, res: Response, next: any) => {
         try {
-            const userPassword = this.requestUtils.getDataFromState(USER_PASSWORD_LABEL);
+            let userPassword = this.requestUtils.getDataFromState(USER_PASSWORD_LABEL);
+            if (!userPassword) {
+                const user = this.requestUtils.getRequestUser();
+                userPassword = await passwordRepository.findOne({email: user.email, status: PASSWORD_STATUS.ACTIVE});
+                this.requestUtils.addDataToState(USER_PASSWORD_LABEL, userPassword);
+            }
+
             const isCorrectPassword = await validateHashedData(req.body.password, userPassword.password);
             if (!isCorrectPassword) return this.sendErrorResponse(res, new Error("Wrong password"), errorMessage.INVALID_LOGIN, 400);
 
             next();
         } catch (error:any) {
-            return this.sendErrorResponse(res, error, errorMessage.UNABLE_TO_LOGIN, 400);
+            console.log(error)
+            return this.sendErrorResponse(res, error, errorMessage.UNABLE_TO_COMPLETE_REQUEST, 500);
         }
 
     }
@@ -107,7 +114,8 @@ class UserMiddleware extends BaseRouterMiddleware {
     */
     public logoutExistingSession = async (req: Request, res: Response, next: any) => {
         try {
-            const user = this.requestUtils.getLoggedInUser();
+            
+            const user = this.requestUtils.getRequestUser();
             await logoutUser(user.id);
             next();
         } catch (error: any) {
