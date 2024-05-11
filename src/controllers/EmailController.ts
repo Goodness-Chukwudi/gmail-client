@@ -1,7 +1,7 @@
 import BaseApiController from "./base controllers/BaseApiController";
 import { GMAIL_OAUTH_CONSENT_REQUIRED, UNABLE_TO_COMPLETE_REQUEST, badRequestError, resourceNotFound } from "../common/constant/error_response_message";
 import AppValidator from "../middlewares/validators/AppValidator";
-import { getAccessToken, getGmailConsentUrl, getThreadMessages, gmailTokenRepository, listMessageThreads, listenForEmailUpdates } from "../services/gmail_service";
+import { gmailService, gmailTokenRepository} from "../services/gmail_service";
 import { GmailAuthorizationScopes } from "../common/config/app_config";
 import { Response } from "express";
 
@@ -24,6 +24,8 @@ class EmailController extends BaseApiController {
         this.gmailAuthCallback("/gmail_oauth_callback"); //POST
         this.listMessageThreads("/threads"); //GET
         this.getThreadMessages("/threads/:id"); //GET
+        this.listMessages("/"); //GET
+        this.listDraftMessages("/drafts"); //GET
     }
 
 
@@ -31,7 +33,7 @@ class EmailController extends BaseApiController {
         this.router.get(path, async (req, res) => {
             try {
                 const user = this.requestUtils.getRequestUser();
-                const url = await getGmailConsentUrl(user.id, GmailAuthorizationScopes);
+                const url = await gmailService.getGmailConsentUrl(user.id, GmailAuthorizationScopes);
 
                 return this.sendSuccessResponse(res, url);
             } catch (error:any) {
@@ -44,7 +46,7 @@ class EmailController extends BaseApiController {
         this.router.post(path, async (req, res) => {
             try {
                 const user = this.requestUtils.getRequestUser();
-                const token = await getAccessToken(req.body.code);
+                const token = await gmailService.getAccessToken(req.body.code);
                 const tokenData = {
                     user: user.id,
                     email: user.email,
@@ -54,7 +56,7 @@ class EmailController extends BaseApiController {
 
                 await gmailTokenRepository.updateMany({user: user.id, is_active: true}, {is_active: false});
                 const gmailToken = await gmailTokenRepository.save(tokenData);
-                await listenForEmailUpdates(gmailToken.token, gmailToken.email); //A cron will call this method for each gmail enabled user, once a day
+                await gmailService.listenForEmailUpdates(gmailToken.token, gmailToken.email); //A cron will call this method for each gmail enabled user, once a day
 
                 return this.sendSuccessResponse(res);
             } catch (error:any) {
@@ -76,8 +78,8 @@ class EmailController extends BaseApiController {
                 if (req.query.page_size) pageSize = Number(req.query.page_size);
                 if (req.query.next_page_token) nextPageToken = req.query.next_page_token as string;
 
-                const response = await listMessageThreads(gmailToken.token, pageSize, nextPageToken);
-                if (!response.success) await this.handleGmailApiErrors(res, response, user.id);
+                const response = await gmailService.listMessageThreads(gmailToken.token, pageSize, nextPageToken);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
                 return this.sendSuccessResponse(res, response.data);
             } catch (error:any) {
@@ -95,8 +97,61 @@ class EmailController extends BaseApiController {
                 const user = this.requestUtils.getRequestUser();
 
                 const search = req.query.search ? req.query.search as string : undefined;
-                const response = await getThreadMessages(gmailToken.token, req.params.id, search);
-                if (!response.success) await this.handleGmailApiErrors(res, response, user.id);
+                const response = await gmailService.getThreadMessages(gmailToken.token, req.params.id, search);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+
+    listMessages(path:string) {
+        this.router.get(path,this.userMiddleWare.setGmailToken);
+        this.router.get(path, async (req, res) => {
+            try {
+                const label:any = req.query.label;
+                const labels = ["TRASH", "STARRED", "SENT", "DRAFT"];
+                if (!labels.includes(label)) {
+                    const message = "Label must be either of " + labels.join();
+                    const error = new Error(message);
+                    return this.sendErrorResponse(res, error, badRequestError(message), 400);
+                }
+
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                let pageSize;
+                let nextPageToken;
+                if (req.query.page_size) pageSize = Number(req.query.page_size);
+                if (req.query.next_page_token) nextPageToken = req.query.next_page_token as string;
+
+                const response = await gmailService.listMessages(gmailToken.token, label, pageSize, nextPageToken);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    listDraftMessages(path:string) {
+        this.router.get(path,this.userMiddleWare.setGmailToken);
+        this.router.get(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                let pageSize;
+                let nextPageToken;
+                if (req.query.page_size) pageSize = Number(req.query.page_size);
+                if (req.query.next_page_token) nextPageToken = req.query.next_page_token as string;
+
+                const response = await gmailService.listDrafts(gmailToken.token, pageSize, nextPageToken);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
                 return this.sendSuccessResponse(res, response.data);
             } catch (error:any) {
@@ -110,7 +165,7 @@ class EmailController extends BaseApiController {
             const error = new Error(response.error.message);
     
             if (response.error.code == 403 || response.error.code == 401) {
-                const consentPageUrl = await getGmailConsentUrl(userId, GmailAuthorizationScopes);
+                const consentPageUrl = await gmailService.getGmailConsentUrl(userId, GmailAuthorizationScopes);
                 return this.sendErrorResponse(res, error, GMAIL_OAUTH_CONSENT_REQUIRED, 400, undefined, {consentPageUrl});
             }
     

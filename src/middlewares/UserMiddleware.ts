@@ -1,13 +1,13 @@
 import BaseRouterMiddleware from "./BaseRouterMiddleware";
 import { GMAIL_TOKEN_LABEL, USER_LABEL, USER_PASSWORD_LABEL } from '../common/constant/app_constants';
 import { NextFunction, Request, Response, Router } from 'express';
-import { logoutUser, userRepository } from "../services/user_service";
+import { userService, userRepository } from "../services/user_service";
 import { passwordRepository } from "../services/password_service";
 import * as errorMessage from "../common/constant/error_response_message";
 import { PASSWORD_STATUS } from "../data/enums/enum";
 import { getCode } from "../common/utils/app_utils";
 import { hashData, validateHashedData } from "../common/utils/auth_utils";
-import { getGmailConsentUrl, gmailTokenRepository } from "../services/gmail_service";
+import { gmailService, gmailTokenRepository } from "../services/gmail_service";
 import { GmailAuthorizationScopes } from "../common/config/app_config";
 
 class UserMiddleware extends BaseRouterMiddleware {
@@ -118,7 +118,7 @@ class UserMiddleware extends BaseRouterMiddleware {
         try {
             
             const user = this.requestUtils.getRequestUser();
-            await logoutUser(user.id);
+            await userService.logoutUser(user.id);
             next();
         } catch (error: any) {
             return this.sendErrorResponse(res, error, errorMessage.UNABLE_TO_LOGIN, 500);
@@ -175,7 +175,7 @@ class UserMiddleware extends BaseRouterMiddleware {
         const user = this.requestUtils.getRequestUser();
         const token = await gmailTokenRepository.findOne({user: user._id, is_active: true});
         if(!token) {
-            const consentPageUrl = await getGmailConsentUrl(user.id, GmailAuthorizationScopes);
+            const consentPageUrl = await gmailService.getGmailConsentUrl(user.id, GmailAuthorizationScopes);
             const error = new Error("Gmail token not found");
             return this.sendErrorResponse(res, error, errorMessage.GMAIL_OAUTH_CONSENT_REQUIRED, 400, undefined, {consentPageUrl});
         };

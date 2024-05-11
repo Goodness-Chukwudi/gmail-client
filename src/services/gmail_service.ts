@@ -109,7 +109,7 @@ const listMessageThreads = async (refreshToken: string, maxResults = 10, nextPag
     } catch (error:any) {
       return {
         success: false,
-        error: error.response?.data?.error
+        error: error.response?.data?.error || error
       }
     }
 }
@@ -188,7 +188,100 @@ const getThreadMessages = async (refreshToken: string, threadId: string, search?
   } catch (error:any) {
     return {
       success: false,
-      error: error.response?.data?.error
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const listMessages = async (refreshToken: string, labelId: "TRASH" | "STARRED" | "SENT" | "DRAFT", maxResults = 10, nextPageToken?: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messageResponse = await gmail.users.messages.list({userId: 'me', maxResults, pageToken: nextPageToken, labelIds: [labelId]});
+    const messagesList = messageResponse.data.messages || [];
+
+    let attachmentCount = 0;
+    const messages: IEmailMessage[] = [];
+    for (let i = 0; i < messagesList.length; i++) {
+      const messageDetails = await gmail.users.messages.get({userId: 'me', id: messagesList[i].id!});
+
+      let attachment_count = 0;
+      const messageData = messageDetails.data;
+      const messageHeaders = extractMessagesHeaders(messageData.payload?.headers || []);
+
+      if(messageData.payload?.parts && messageData.payload.parts[1]?.filename) {
+        attachment_count += messageData.payload.parts.length - 1;
+      }
+      
+      const message: IEmailMessage = {
+        headers: messageHeaders,
+        id: messageData.id!,
+        attachment_count: attachment_count,
+        threadId: messageData.threadId!,
+        labelIds: messageData.labelIds!,
+        snippet: messageData.snippet!,
+      };
+
+      messages.push(message);
+      attachmentCount += attachment_count
+    }
+
+    return {
+      success: true,
+      data: {attachment_count: attachmentCount, messages}
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const listDrafts = async (refreshToken: string, maxResults = 10, nextPageToken?: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const draftsResponse = await gmail.users.drafts.list({userId: 'me', maxResults, pageToken: nextPageToken});
+    const drafts = draftsResponse.data.drafts || [];
+
+    let attachmentCount = 0;
+    const messages: IEmailMessage[] = [];
+    for (let i = 0; i < drafts.length; i++) {
+      const messageResponse = await gmail.users.messages.get({userId: 'me', id: drafts[i].message?.id || ""});
+
+      let attachment_count = 0;
+      const messageData = messageResponse.data;
+      const messageHeaders = extractMessagesHeaders(messageData.payload?.headers || []);
+
+      if(messageData.payload?.parts && messageData.payload.parts[1]?.filename) {
+        attachment_count += messageData.payload.parts.length - 1;
+      }
+      
+      const message: IEmailMessage = {
+        headers: messageHeaders,
+        id: messageData.id!,
+        draft_id: drafts[i].id!,
+        attachment_count: attachment_count,
+        threadId: messageData.threadId!,
+        labelIds: messageData.labelIds!,
+        snippet: messageData.snippet!,
+      };
+
+      messages.push(message);
+      attachmentCount += attachment_count
+    }
+
+    return {
+      success: true,
+      data: {attachment_count: attachmentCount, messages}
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
     }
   }
 }
@@ -207,12 +300,15 @@ function extractMessagesHeaders(headers: any[]) {
     return threadHeaders as IEmailMessageHeader;
 }
 
-export default GmailTokenRepository;
-export {
-    gmailTokenRepository,
-    getGmailConsentUrl,
-    getAccessToken,
-    listenForEmailUpdates,
-    listMessageThreads,
-    getThreadMessages
+const gmailService = {
+  getGmailConsentUrl,
+  getAccessToken,
+  listenForEmailUpdates,
+  listMessageThreads,
+  getThreadMessages,
+  listMessages,
+  listDrafts
 }
+export default GmailTokenRepository;
+
+export { gmailTokenRepository, gmailService };

@@ -6,7 +6,7 @@ import { createMongooseTransaction } from "../common/utils/app_utils";
 import AppValidator from "../middlewares/validators/AppValidator";
 import { PASSWORD_UPDATE_SUCCESSFUL } from "../common/constant/success_response_message";
 import { passwordRepository } from "../services/password_service";
-import { loginUser, logoutUser } from "../services/user_service";
+import { userService } from "../services/user_service";
 
 class AppController extends BaseApiController {
     private appValidator: AppValidator;
@@ -80,8 +80,8 @@ class AppController extends BaseApiController {
                 //Deactivate old password
                 await passwordRepository.updateById(previousPassword.id, {status: PASSWORD_STATUS.DEACTIVATED}, session);
 
-                await logoutUser(user.id);
-                const token = await loginUser(user.id);
+                await userService.logoutUser(user.id);
+                const token = await userService.loginUser(user.id);
         
                 this.sendSuccessResponse(res, {message: PASSWORD_UPDATE_SUCCESSFUL, token: token}, session);
             } catch (error:any) {

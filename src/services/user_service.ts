@@ -53,10 +53,10 @@ const loginUser = async (userId: string, session?: ClientSession): Promise<strin
 }
 
 const userRepository = new UserRepository();
-
-export default UserRepository;
-export {
-    userRepository,
+const userService = {
     logoutUser,
     loginUser
-}
+};
+
+export default UserRepository;
+export { userRepository, userService }

@@ -2,7 +2,7 @@ import BaseApiController from "./base controllers/BaseApiController";
 import { UNABLE_TO_COMPLETE_REQUEST, UNABLE_TO_LOGIN } from "../common/constant/error_response_message";
 import { LOGIN_SUCCESSFUL, SIGNUP_SUCCESS } from "../common/constant/success_response_message";
 import AppValidator from "../middlewares/validators/AppValidator";
-import { loginUser, userRepository } from "../services/user_service";
+import { userService, userRepository } from "../services/user_service";
 import { passwordRepository } from "../services/password_service";
 import { createMongooseTransaction } from "../common/utils/app_utils";
 
@@ -47,7 +47,7 @@ class AuthController extends BaseApiController {
                 }
                 await passwordRepository.save(passwordData, session);
 
-                const token = await loginUser(user.id, session);
+                const token = await userService.loginUser(user.id, session);
                 const response = {
                     message: SIGNUP_SUCCESS,
                     token: token,
@@ -72,7 +72,7 @@ class AuthController extends BaseApiController {
             try {
 
                 const user = this.requestUtils.getRequestUser();
-                const token = await loginUser(user.id);
+                const token = await userService.loginUser(user.id);
                 const response = {
                     message: LOGIN_SUCCESSFUL,
                     token: token,
