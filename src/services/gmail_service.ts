@@ -301,7 +301,7 @@ const getLabelStats = async (refreshToken: string, labelId: string, email?: stri
   } catch (error:any) {
     return {
       success: false,
-      error: error.response?.data?.error
+      error: error.response?.data?.error || error
     }
   }
 }
@@ -365,7 +365,7 @@ const getMessage = async (refreshToken: string, messageId: string) => {
   } catch (error:any) {
     return {
       success: false,
-      error: error.response?.data?.error
+      error: error.response?.data?.error || error
     }
   }
 }
@@ -433,7 +433,105 @@ const getDraftDetails = async (refreshToken: string, draftId?: string) => {
   } catch (error:any) {
     return {
       success: false,
-      error: error.response?.data?.error
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const addMessageLabels = async (refreshToken: string, messageId: string, label: "TRASH"|"STARRED") => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const requestBody = {addLabelIds: [label]}
+    const messageResponse = await gmail.users.messages.modify({userId: 'me', id: messageId, requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const removeMessageLabels = async (refreshToken: string, messageId: string, label: "TRASH"|"STARRED"|"INBOX") => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const requestBody = {removeLabelIds: [label]}
+    const messageResponse = await gmail.users.messages.modify({userId: 'me', id: messageId, requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const trashMessage = async (refreshToken: string, messageId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messageResponse = await gmail.users.messages.trash({userId: 'me', id: messageId});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const batchDelete = async (refreshToken: string, messageIds: string[]) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const requestBody = {ids: messageIds, addLabelIds: ["TRASH"]};
+    await gmail.users.messages.batchModify({userId: 'me', requestBody});
+
+    return {
+      success: true,
+      data: {}
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const unTrashMessage = async (refreshToken: string, messageId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messageResponse = await gmail.users.messages.untrash({userId: 'me', id: messageId});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
     }
   }
 }
@@ -462,7 +560,12 @@ const gmailService = {
   listDrafts,
   getLabelStats,
   getMessage,
-  getDraftDetails
+  getDraftDetails,
+  addMessageLabels,
+  removeMessageLabels,
+  trashMessage,
+  batchDelete,
+  unTrashMessage
 }
 export default GmailTokenRepository;
 export { gmailTokenRepository, gmailService };

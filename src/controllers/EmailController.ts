@@ -29,6 +29,12 @@ class EmailController extends BaseApiController {
         this.getMessageLabelStats("/stats"); //GET
         this.getMessageDetails("/:id/details"); //GET
         this.getDraft("/drafts/:id"); //GET
+        this.starMessage("/:id/star"); //PATCH
+        this.removeMessageStar("/:id/unstar"); //PATCH
+        this.archiveMessage("/:id/archive"); //PATCH
+        this.deleteMessage("/:id/trash"); //DELETE
+        this.batchDelete("/trash"); //DELETE
+        this.restoreMessage("/:id/untrash"); //PATCH
     }
 
 
@@ -202,6 +208,7 @@ class EmailController extends BaseApiController {
     }
 
     getDraft(path:string) {
+        this.router.get(path,this.userMiddleWare.setGmailToken);
         this.router.get(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -210,7 +217,109 @@ class EmailController extends BaseApiController {
                 const response = await gmailService.getDraftDetails(gmailToken.token, req.params.id);
                 if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
-                if (response.success) return this.sendSuccessResponse(res, response.data);
+                return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    starMessage(path:string) {
+        this.router.patch(path, this.userMiddleWare.setGmailToken);
+        this.router.patch(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.addMessageLabels(gmailToken.token, req.params.id, "STARRED");
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    removeMessageStar(path:string) {
+        this.router.patch(path, this.userMiddleWare.setGmailToken);
+        this.router.patch(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.removeMessageLabels(gmailToken.token, req.params.id, "STARRED");
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    archiveMessage(path:any) {
+        this.router.patch(path, this.userMiddleWare.setGmailToken);
+        this.router.patch(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.removeMessageLabels(gmailToken.token, req.params.id, "INBOX");
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    deleteMessage(path:string) {
+        this.router.delete(path, this.userMiddleWare.setGmailToken);
+        this.router.delete(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.trashMessage(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    batchDelete(path:string) {
+        this.router.delete(path, this.userMiddleWare.setGmailToken);
+        this.router.delete(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.batchDelete(gmailToken.token, req.body.ids);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    restoreMessage(path:string) {
+        this.router.patch(path, this.userMiddleWare.setGmailToken);
+        this.router.patch(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.unTrashMessage(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
             } catch (error:any) {
                 return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
             }
