@@ -12,6 +12,4 @@ class LoginSessionRepository extends DBQuery<ILoginSession, ICreateLoginSession,
 const loginSessionRepository = new LoginSessionRepository();
 
 export default LoginSessionRepository;
-export {
-    loginSessionRepository
-}
+export { loginSessionRepository }

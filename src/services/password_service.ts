@@ -11,6 +11,4 @@ class PasswordRepository extends DBQuery<IUserPassword, ICreateUserPassword, IUs
 const passwordRepository = new PasswordRepository();
 
 export default PasswordRepository;
-export {
-    passwordRepository
-}
+export { passwordRepository }

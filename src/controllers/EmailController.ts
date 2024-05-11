@@ -1,5 +1,5 @@
 import BaseApiController from "./base controllers/BaseApiController";
-import { GMAIL_OAUTH_CONSENT_REQUIRED, UNABLE_TO_COMPLETE_REQUEST, badRequestError, resourceNotFound } from "../common/constant/error_response_message";
+import { GMAIL_OAUTH_CONSENT_REQUIRED, UNABLE_TO_COMPLETE_REQUEST, badRequestError, requiredField, resourceNotFound } from "../common/constant/error_response_message";
 import AppValidator from "../middlewares/validators/AppValidator";
 import { gmailService, gmailTokenRepository} from "../services/gmail_service";
 import { GmailAuthorizationScopes } from "../common/config/app_config";
@@ -26,6 +26,9 @@ class EmailController extends BaseApiController {
         this.getThreadMessages("/threads/:id"); //GET
         this.listMessages("/"); //GET
         this.listDraftMessages("/drafts"); //GET
+        this.getMessageLabelStats("/stats"); //GET
+        this.getMessageDetails("/:id/details"); //GET
+        this.getDraft("/drafts/:id"); //GET
     }
 
 
@@ -154,6 +157,60 @@ class EmailController extends BaseApiController {
                 if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
                 return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    getMessageLabelStats(path:string) {
+        this.router.get(path,this.userMiddleWare.setGmailToken);
+        this.router.get(path, async (req, res) => {
+            try {
+                if(!req.query.label) {
+                    const error = new Error("Label Id is required");
+                    return this.sendErrorResponse(res, error, requiredField("label"), 400);
+                }
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.getLabelStats(gmailToken.token, req.query.label.toString());
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    getMessageDetails(path:string) {
+        this.router.get(path,this.userMiddleWare.setGmailToken);
+        this.router.get(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.getMessage(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res, response.data);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    getDraft(path:string) {
+        this.router.get(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.getDraftDetails(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                if (response.success) return this.sendSuccessResponse(res, response.data);
             } catch (error:any) {
                 return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
             }

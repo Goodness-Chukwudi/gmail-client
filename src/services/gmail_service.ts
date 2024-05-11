@@ -140,7 +140,7 @@ const getThreadMessages = async (refreshToken: string, threadId: string, search?
         const attachments = [];
         if (body?.attachmentId) {
           //@ts-ignore
-          const textPart = message.payload.parts[0]?.parts[1]?.body?.data;
+          const textPart = message.payload?.parts[0]?.parts[1]?.body?.data;
           if (textPart) {
             const buffer = Buffer.from(textPart, "base64");
             messageBody = buffer.toString("utf-8");
@@ -286,6 +286,158 @@ const listDrafts = async (refreshToken: string, maxResults = 10, nextPageToken?:
   }
 }
 
+const getLabelStats = async (refreshToken: string, labelId: string, email?: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messages = await gmail.users.messages.list({userId: email || 'me', labelIds: [labelId]});
+    const messagesCount = messages.data.messages?.length || 0;
+
+    return {
+      success: true,
+      data: {messages_count: messagesCount}
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error
+    }
+  }
+}
+
+const getMessage = async (refreshToken: string, messageId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messageResponse = await gmail.users.messages.get({userId: 'me', id: messageId});
+    const message = messageResponse.data;
+    const threadHeaders = extractMessagesHeaders(message.payload?.headers || []);
+
+    let messageBody = "";
+    const body = message.payload?.parts ? message.payload.parts[1].body : message.payload?.body;
+
+    if (body?.data) {
+      const buffer = Buffer.from(body.data, "base64");
+      messageBody = buffer.toString("utf-8");
+    } 
+
+    const attachments = [];
+    if (body?.attachmentId) {
+      //@ts-ignore
+      const textPart = message.payload?.parts[0]?.parts[1]?.body?.data;
+      if (textPart) {
+        const buffer = Buffer.from(textPart, "base64");
+        messageBody = buffer.toString("utf-8");
+      }
+
+      const parts = message.payload?.parts || [];
+      for (let j = 1; j < parts.length; j++) {
+        const part = parts[j];
+        const attachmentId = part.body?.attachmentId;
+        const fileName = part.filename;
+        const mimeType = part.mimeType;
+        const attachmentResponse = await gmail.users.messages.attachments.get({userId: 'me', id: attachmentId!, messageId: message.id!});
+        const attachment = {
+          file_name: fileName!,
+          file_type: mimeType!,
+          file: attachmentResponse.data.data!
+        }
+        attachments.push(attachment);
+      }
+    }
+    
+    const messageDetail: IEmailMessage = {
+      headers: threadHeaders,
+      id: message.id!,
+      threadId: message.threadId!,
+      labelIds: message.labelIds!,
+      snippet: message.snippet!,
+      body: messageBody,
+      attachments: attachments
+    };
+
+    return {
+      success: true,
+      data: messageDetail
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error
+    }
+  }
+}
+
+const getDraftDetails = async (refreshToken: string, draftId?: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    const messageResponse = await gmail.users.drafts.get({userId: 'me', id: draftId});
+    const draft = messageResponse.data;
+    const messageId = draft.message?.id || "";
+    const payload = draft.message?.payload;
+    const threadHeaders = extractMessagesHeaders(payload?.headers || []);
+
+    let messageBody = "";
+    const body = payload?.parts ? payload.parts[1].body : payload?.body;
+
+    if (body?.data) {
+      const buffer = Buffer.from(body.data, "base64");
+      messageBody = buffer.toString("utf-8");
+    } 
+
+    const attachments = [];
+    if (body?.attachmentId) {
+      //@ts-ignore
+      const textPart = payload?.parts[0]?.parts[1]?.body?.data;
+      if (textPart) {
+        const buffer = Buffer.from(textPart, "base64");
+        messageBody = buffer.toString("utf-8");
+      }
+
+      const parts = payload?.parts || [];
+      for (let j = 1; j < parts.length; j++) {
+        const part = parts[j];
+        const attachmentId = part.body?.attachmentId;
+        const fileName = part.filename;
+        const mimeType = part.mimeType;
+        
+        const attachmentResponse = await gmail.users.messages.attachments.get({userId: 'me', id: attachmentId!, messageId: messageId});
+        const attachment = {
+          file_name: fileName!,
+          file_type: mimeType!,
+          file: attachmentResponse.data.data!
+        }
+        attachments.push(attachment);
+      }
+    }
+    
+    const message: IEmailMessage = {
+      headers: threadHeaders,
+      id: messageId,
+      draft_id: draft.id!,
+      threadId: draft.message?.threadId || "",
+      labelIds: draft.message?.labelIds || [],
+      snippet: draft.message?.snippet || "",
+      body: messageBody,
+      attachments: attachments
+    };
+
+    return {
+      success: true,
+      data: message
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error
+    }
+  }
+}
+
 function extractMessagesHeaders(headers: any[]) {
     const threadHeaders:Record<string,any> = {};
     headers.forEach((header) => {
@@ -307,8 +459,10 @@ const gmailService = {
   listMessageThreads,
   getThreadMessages,
   listMessages,
-  listDrafts
+  listDrafts,
+  getLabelStats,
+  getMessage,
+  getDraftDetails
 }
 export default GmailTokenRepository;
-
 export { gmailTokenRepository, gmailService };
