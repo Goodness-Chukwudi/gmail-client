@@ -1,5 +1,5 @@
 import BaseRouterMiddleware from "./BaseRouterMiddleware";
-import { USER_LABEL, USER_PASSWORD_LABEL } from '../common/constant/app_constants';
+import { GMAIL_TOKEN_LABEL, USER_LABEL, USER_PASSWORD_LABEL } from '../common/constant/app_constants';
 import { NextFunction, Request, Response, Router } from 'express';
 import { logoutUser, userRepository } from "../services/user_service";
 import { passwordRepository } from "../services/password_service";
@@ -7,6 +7,8 @@ import * as errorMessage from "../common/constant/error_response_message";
 import { PASSWORD_STATUS } from "../data/enums/enum";
 import { getCode } from "../common/utils/app_utils";
 import { hashData, validateHashedData } from "../common/utils/auth_utils";
+import { getGmailConsentUrl, gmailTokenRepository } from "../services/gmail_service";
+import { GmailAuthorizationScopes } from "../common/config/app_config";
 
 class UserMiddleware extends BaseRouterMiddleware {
 
@@ -146,7 +148,7 @@ class UserMiddleware extends BaseRouterMiddleware {
             })
             .catch((err) => {
                 this.sendErrorResponse(res, err, errorMessage.UNABLE_TO_COMPLETE_REQUEST, 500);
-            })
+        })
     }
 
     public validatePhone = (req:Request, res:Response, next:any) => {
@@ -166,7 +168,20 @@ class UserMiddleware extends BaseRouterMiddleware {
             })
             .catch((err) => {
                 this.sendErrorResponse(res, err, errorMessage.UNABLE_TO_COMPLETE_REQUEST, 500);
-            })
+        })
+    }
+
+    public setGmailToken = async (req:Request, res:Response, next:any) => {
+        const user = this.requestUtils.getRequestUser();
+        const token = await gmailTokenRepository.findOne({user: user._id, is_active: true});
+        if(!token) {
+            const consentPageUrl = await getGmailConsentUrl(user.id, GmailAuthorizationScopes);
+            const error = new Error("Gmail token not found");
+            return this.sendErrorResponse(res, error, errorMessage.GMAIL_OAUTH_CONSENT_REQUIRED, 400, undefined, {consentPageUrl});
+        };
+
+        this.requestUtils.addDataToState(GMAIL_TOKEN_LABEL, token);
+        next();
     }
 }
 

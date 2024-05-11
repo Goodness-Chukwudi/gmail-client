@@ -55,6 +55,42 @@ interface AuthTokenPayload {
     loginSession: string
 }
 
+interface GmailTokenCredentials {
+    access_token: string;
+    expiry_date: number;
+    id_token: string;
+    refresh_token: string;
+    scope: string;
+    token_type: string;
+}
+
+interface IEmailMessageHeader {
+    from: string;
+    to: string;
+    subject: string;
+    message_id: string;
+    date: string;
+    cc: string;
+    bcc?: string;
+};
+
+
+interface IEmailMessage {
+    headers: IEmailMessageHeader;
+    id: string;
+    threadId: string;
+    labelIds: string[];
+    snippet: string;
+    body?: string;
+    attachment_count?: number;
+    draft_id?: string;
+    attachments?: {
+      file_name: string,
+      file_type: string,
+      file: string
+    }[]
+};
+
 export {
     IResponseMessage,
     JoiExtensionFactory,
@@ -62,5 +98,8 @@ export {
     InsertManyResult,
     UpdateManyResult,
     DeleteResult,
-    AuthTokenPayload
+    AuthTokenPayload,
+    GmailTokenCredentials,
+    IEmailMessageHeader,
+    IEmailMessage
 }

@@ -151,6 +151,11 @@ const MAX_FILE_COUNT_LIMIT = Object.freeze({
     message: "You have exceeded the max number of files",
 });
 
+const GMAIL_OAUTH_CONSENT_REQUIRED = Object.freeze({
+    response_code: 28,
+    message: "Please grant us the required access to continue",
+});
+
 export {
     requiredField,
     MAX_FILE_COUNT_LIMIT,
@@ -177,5 +182,6 @@ export {
     PASSWORD_UPDATE_REQUIRED,
     PASSWORD_MISMATCH,
     INVALID_SESSION_USER,
-    UNABLE_TO_LOGIN
+    UNABLE_TO_LOGIN,
+    GMAIL_OAUTH_CONSENT_REQUIRED
 };

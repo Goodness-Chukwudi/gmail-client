@@ -1,6 +1,7 @@
 import { Request, Router, Response } from "express";
 import { IUserDocument } from "../../models/user";
 import { ILoginSessionDocument } from "../../models/login_session";
+import { IGmailTokenDocument } from "../../models/gmail_api_token";
 
 class RequestUtils {
 
@@ -49,6 +50,12 @@ class RequestUtils {
     */
     getLoginSession() {
         return this.response.locals.login_session as ILoginSessionDocument;
+    }
+    /**
+     * @returns {IGmailTokenDocument} an object containing details of the logged user's gmail token.
+    */
+    getGmailToken() {
+        return this.response.locals.gmail_token as IGmailTokenDocument;
     }
 }
 

@@ -37,9 +37,15 @@ const ENVIRONMENTS = Object.freeze({
   STAGING: "staging"
 });
 
+const GmailAuthorizationScopes = [
+  "https://www.googleapis.com/auth/gmail.labels",
+  "https://www.googleapis.com/auth/gmail.modify",
+];
+
 export {
   JoiValidatorOptions,
   PaginationCustomLabels,
   DbConfig,
-  ENVIRONMENTS
+  ENVIRONMENTS,
+  GmailAuthorizationScopes
 }

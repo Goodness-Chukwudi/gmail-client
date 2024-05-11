@@ -13,7 +13,11 @@ function validateEnvironmentVariables() {
             API_PATH: Joi.string().required(),
             MONGODB_URI: Joi.string().required(),
             JWT_PRIVATE_KEY: Joi.string().required(),
-            JWT_EXPIRY: Joi.string().required()
+            JWT_EXPIRY: Joi.string().required(),
+            GOOGLE_TOPIC_NAME: Joi.string().required(),
+            GOOGLE_CLIENT_ID: Joi.string().required(),
+            GOOGLE_CLIENT_SECRET: Joi.string().required(),
+            GMAIL_CALLBACK_URL:Joi.string().required()
         });
         
         const response = EnvSchema.validate(Env);

@@ -41,10 +41,10 @@ abstract class BaseResponseHandler {
     /**
      * Terminates the http request with the provided express res object.
      * A success response is created and an optional data object data returned to the client.
-     * @param res The express response object to be used to send the success response 
-     * @param data An optional data to be returned to the user
-     * @param session An optional mongoose client session, required to commit a running database transaction if any
-     * @param statusCode HTTP status code of the success response
+     * @param {Response} res The express response object to be used to send the success response 
+     * @param {*} data An optional data to be returned to the user
+     * @param {ClientSession} session An optional mongoose client session, required to commit a running database transaction if any
+     * @param {number} statusCode HTTP status code of the success response
      * @returns  void
     */
     protected async sendSuccessResponse(res: Response, data:any = null, session?: ClientSession, statusCode = 200) {
