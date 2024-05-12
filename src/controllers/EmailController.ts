@@ -3,7 +3,17 @@ import { GMAIL_OAUTH_CONSENT_REQUIRED, UNABLE_TO_COMPLETE_REQUEST, badRequestErr
 import AppValidator from "../middlewares/validators/AppValidator";
 import { gmailService, gmailTokenRepository} from "../services/gmail_service";
 import { GmailAuthorizationScopes } from "../common/config/app_config";
-import { Response } from "express";
+import { Response, Request } from "express";
+import multer from "multer";
+import fs from  "fs";
+import { SendEmailParams } from "../data/interfaces/interfaces";
+
+const upload = multer({
+    dest: 'uploads/',
+    limits: {
+        fileSize: 20 * 1024 * 1024
+    }
+})
 
 class EmailController extends BaseApiController {
 
@@ -35,6 +45,13 @@ class EmailController extends BaseApiController {
         this.deleteMessage("/:id/trash"); //DELETE
         this.batchDelete("/trash"); //DELETE
         this.restoreMessage("/:id/untrash"); //PATCH
+        this.sendMessage("/"); //POST
+        this.createDraft("/drafts"); //POST
+        this.updateDraft("/drafts/:id"); //PATCH
+        this.deleteDraft("/drafts/:id"); //DELETE
+        this.sendDraft("/drafts/:id/send"); //POST
+        this.replyMessage("/:id/thread/:threadId/reply"); //POST
+        this.disconnectApp("/revoke-access"); //DELETE
     }
 
 
@@ -326,6 +343,205 @@ class EmailController extends BaseApiController {
         })
     }
 
+    sendMessage(path:string) {
+        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+            
+                const body = req.body
+                const attachments = this.extractAttachments(req);
+                const message = {
+                    recipient: body.recipient,
+                    cc: body.cc,
+                    bcc: body.bcc,
+                    in_reply_to: body.in_reply_to,
+                    references: body.references,
+                    threadId: body.threadId,
+                    body: body.email_body,
+                    subject: body.subject,
+                    attachments: attachments
+                }
+
+                const response = await gmailService.sendMessage(gmailToken.token, message);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    createDraft(path:string) {
+        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const body = req.body
+                const attachments = this.extractAttachments(req);
+                const message = {
+                    recipient: body.recipient,
+                    cc: body.cc,
+                    bcc: body.bcc,
+                    in_reply_to: body.in_reply_to,
+                    references: body.references,
+                    threadId: body.threadId,
+                    body: body.email_body,
+                    subject: body.subject,
+                    attachments: attachments
+                }
+
+                const response = await gmailService.createDraft(gmailToken.token, message);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    updateDraft(path:string) {
+        this.router.patch(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.patch(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const body = req.body
+                const attachments = this.extractAttachments(req);
+                const message = {
+                    recipient: body.recipient,
+                    cc: body.cc,
+                    bcc: body.bcc,
+                    in_reply_to: body.in_reply_to,
+                    references: body.references,
+                    threadId: body.threadId,
+                    body: body.email_body,
+                    subject: body.subject,
+                    attachments: attachments
+                }
+
+                const response = await gmailService.updateDraft(gmailToken.token, req.params.id, message);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    deleteDraft(path:string) {
+        this.router.delete(path, this.userMiddleWare.setGmailToken);
+        this.router.delete(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const response = await gmailService.deleteDraft(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    sendDraft(path:string) {
+        this.router.post(path, this.userMiddleWare.setGmailToken);
+        this.router.post(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const body = req.body
+                const attachments = this.extractAttachments(req);
+                const message = {
+                    recipient: body.recipient,
+                    cc: body.cc,
+                    bcc: body.bcc,
+                    in_reply_to: body.in_reply_to,
+                    references: body.references,
+                    threadId: body.threadId,
+                    body: body.email_body,
+                    subject: body.subject,
+                    attachments: attachments
+                }
+
+                const updateResponse = await gmailService.updateDraft(gmailToken.token, req.params.id, message);
+                if (!updateResponse.success) return await this.handleGmailApiErrors(res, updateResponse, user.id);
+
+                const response = await gmailService.sendDraft(gmailToken.token, req.params.id);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    replyMessage(path:string) {
+        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path, async (req, res) => {
+            try {
+                const gmailToken = this.requestUtils.getGmailToken();
+                const user = this.requestUtils.getRequestUser();
+
+                const body = req.body
+                const attachments = this.extractAttachments(req);
+                const message: SendEmailParams = {
+                    recipient: body.recipient,
+                    cc: body.cc,
+                    bcc: body.bcc,
+                    threadId: body.threadId,
+                    body: body.email_body,
+                    attachments: attachments
+                }
+                
+                const messageId = req.params.id;
+                const threadId = req.params.threadId;
+                body.threadId = threadId;
+
+                const messageParams = await gmailService.getReplyMessageParams(gmailToken.token, messageId, threadId);
+                if (!messageParams.success) return await this.handleGmailApiErrors(res, messageParams, user.id);
+
+                message.references = messageParams.data!.references;
+                message.in_reply_to = messageParams.data!.message_id;
+                message.subject = messageParams.data!.subject;
+
+                const response = await gmailService.sendMessage(gmailToken.token, message);
+                if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
+
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
+    disconnectApp(path:string) {
+        this.router.delete(path, this.userMiddleWare.setGmailToken);
+        this.router.delete(path, async (req, res) => {
+            try {
+                const user = this.requestUtils.getRequestUser();
+                const gmailToken = await gmailTokenRepository.findOne({user: user._id, is_active: true});
+                if (gmailToken.token) await gmailService.revokeAppAccess(gmailToken.token);
+                await gmailTokenRepository.deleteMany({user: user._id});
+                
+                return this.sendSuccessResponse(res);
+            } catch (error:any) {
+                return this.sendErrorResponse(res, error, UNABLE_TO_COMPLETE_REQUEST, 500);
+            }
+        })
+    }
+
     private async handleGmailApiErrors(res:Response, response:Record<string,any>, userId: string) {
         try {
             const error = new Error(response.error.message);
@@ -344,6 +560,29 @@ class EmailController extends BaseApiController {
             }
     
             throw new Error("Gmail API error");
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    private extractAttachments(req:Request) {
+        try {
+            const attachments = [];
+            if (req.files) {
+                const files = req.files as Express.Multer.File[]
+                for (const file of files) {
+                    const fileContent = Buffer.from(fs.readFileSync(file.path)).toString("base64");
+                    
+                    const attachment = {
+                        filename: file.originalname,
+                        content: fileContent,
+                        encoding: 'base64'
+                    }
+                    attachments.push(attachment);
+                }
+                return attachments;
+            }
+            return undefined;
         } catch (error) {
             throw error;
         }

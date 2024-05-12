@@ -91,6 +91,23 @@ interface IEmailMessage {
     }[]
 };
 
+
+export interface SendEmailParams {
+    recipient?: string[];
+    cc?: string[];
+    bcc?: string[];
+    in_reply_to?: string;
+    references?: string[];
+    threadId?: string;
+    body?: string;
+    subject?: string;
+    attachments?: {
+        filename: string,
+        content: string,
+        encoding: string
+      }[];
+  }
+
 export {
     IResponseMessage,
     JoiExtensionFactory,

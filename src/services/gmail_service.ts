@@ -1,8 +1,11 @@
 import Env from '../common/config/environment_variables';
-import { GmailTokenCredentials, IEmailMessage, IEmailMessageHeader } from '../data/interfaces/interfaces';
+import { GmailTokenCredentials, IEmailMessage, IEmailMessageHeader, SendEmailParams } from '../data/interfaces/interfaces';
 import GmailToken, { IGmailToken, ICreateGmailToken, IGmailTokenDocument} from '../models/gmail_api_token';
 import DBQuery from './DBQuery';
 import {google} from "googleapis";
+import https from "https";
+
+const MailComposer = require("nodemailer/lib/mail-composer");
 
 const gmail = google.gmail('v1');
 const oauth2Client = new google.auth.OAuth2(
@@ -536,6 +539,188 @@ const unTrashMessage = async (refreshToken: string, messageId: string) => {
   }
 }
 
+const sendMessage = async (refreshToken: string, email: SendEmailParams) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+  
+    const requestBody = {
+      threadId: email.threadId,
+      raw: await generateEncodedEmail(email)
+    }
+    const messageResponse = await gmail.users.messages.send({userId: 'me', requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const createDraft = async (refreshToken: string, email: SendEmailParams) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+  
+    const requestBody = {
+      message: {
+        raw: await generateEncodedEmail(email)
+      }
+    }
+    const messageResponse = await gmail.users.drafts.create({userId: 'me', requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const updateDraft = async (refreshToken: string, draftId: string, email: SendEmailParams) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+  
+    const requestBody = {
+      message: {
+        raw: await generateEncodedEmail(email)
+      }
+    }
+    const messageResponse = await gmail.users.drafts.update({userId: 'me', id: draftId, requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const deleteDraft = async (refreshToken: string, draftId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const messageResponse = await gmail.users.drafts.delete({userId: 'me', id: draftId});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+
+const sendDraft = async (refreshToken: string, draftId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const requestBody = {
+      id: draftId
+    }
+    const messageResponse = await gmail.users.drafts.send({userId: 'me', requestBody});
+
+    return {
+      success: true,
+      data: messageResponse.data
+    }
+    
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const getReplyMessageParams = async (refreshToken: string, messageId: string, threadId: string) => {
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    
+    const response = await gmail.users.threads.get({userId: 'me', id: threadId});
+    const references: string[] = [];
+    let subject;
+    let message_id;
+    const messages = response.data.messages || [];
+
+    for (let i = 0; i < messages.length; i++) {
+
+      const message = messages[i];
+      if (!message.labelIds?.includes("SPAM") && !message.labelIds?.includes("TRASH") && !message.labelIds?.includes("DRAFT")) {
+
+        const headers = extractMessagesHeaders(message.payload?.headers || []);
+
+        references.push(headers.message_id);
+        if (message.id == messageId) {
+          if (message.id == threadId) subject = "Re: " + headers.subject;
+          else subject = headers.subject;
+
+          message_id = message_id;
+        }
+      }
+    }
+
+    return {
+      success: true,
+      data: {references, subject, message_id}
+    }
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+}
+
+const revokeAppAccess = async (refreshToken: string) => {
+
+  return new Promise((resolve, reject) => {
+    try {
+      const token = "token=" + refreshToken;
+      const options = {
+        host: 'oauth2.googleapis.com',
+        port: '443',
+        path: '/revoke',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(token)
+        }
+      };
+
+      const request = https.request(options, function (res) {
+        res.setEncoding('utf8');
+        res.on('data', data => resolve(data));
+      });
+
+      request.on('error', error => reject(error));
+
+      request.write(token);
+      request.end();
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 function extractMessagesHeaders(headers: any[]) {
     const threadHeaders:Record<string,any> = {};
     headers.forEach((header) => {
@@ -548,6 +733,41 @@ function extractMessagesHeaders(headers: any[]) {
     });
 
     return threadHeaders as IEmailMessageHeader;
+}
+
+const generateEncodedEmail = async (email: SendEmailParams): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const mail = new MailComposer(
+        {
+          from: "me",
+          to: email.recipient,
+          cc: email.cc,
+          bcc: email.bcc,
+          replyTo: "me",
+          html: email.body,
+          subject: email.subject,
+          textEncoding: "base64",
+          attachments: email.attachments,
+          references: email.references,
+          inReplyTo: email.in_reply_to
+        });
+
+        mail.compile().build((err:any, message:any) => {
+          if (err) reject(err);
+          const encodedEmail = Buffer
+            .from(message)
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');;
+          resolve(encodedEmail);
+        });
+    } catch (error) {
+      reject(error);
+    }
+
+  })
 }
 
 const gmailService = {
@@ -565,7 +785,14 @@ const gmailService = {
   removeMessageLabels,
   trashMessage,
   batchDelete,
-  unTrashMessage
+  unTrashMessage,
+  sendMessage,
+  createDraft,
+  updateDraft,
+  deleteDraft,
+  sendDraft,
+  getReplyMessageParams,
+  revokeAppAccess
 }
 export default GmailTokenRepository;
 export { gmailTokenRepository, gmailService };

@@ -5,7 +5,6 @@ import AppRoutes from "./routes/AppRoutes";
 import AuthController from "./controllers/AuthController";
 import AuthMiddleware from "./middlewares/AuthMiddleware";
 import Env from "./common/config/environment_variables";
-import fileUpload from "express-fileupload";
 import corsSettings from "./common/utils/cors";
 import AppValidator from "./middlewares/validators/AppValidator";
 
@@ -23,7 +22,6 @@ class App {
     private plugInMiddlewares() {
       this.app.use(express.json());
       this.app.use(express.urlencoded({ extended: false }));
-      this.app.use(fileUpload({useTempFiles: true, tempFileDir: "/tmp/", limits: { fileSize: 10 * 1024 *1024 /*10mb*/}, abortOnLimit: true}));
       this.app.use(corsSettings);
       this.app.use(helmet());
       this.app.use(compression());
