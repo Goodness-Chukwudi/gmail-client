@@ -7,6 +7,7 @@ import { Response, Request } from "express";
 import multer from "multer";
 import fs from  "fs";
 import { SendEmailParams } from "../data/interfaces/interfaces";
+import EmailValidator from "../middlewares/validators/EmailValidator";
 
 const upload = multer({
     dest: 'uploads/',
@@ -18,6 +19,7 @@ const upload = multer({
 class EmailController extends BaseApiController {
 
     appValidator: AppValidator;
+    emailValidator: EmailValidator;
 
     constructor() {
         super();
@@ -27,6 +29,7 @@ class EmailController extends BaseApiController {
     
     protected initializeMiddleware() {
         this.appValidator = new AppValidator(this.router);
+        this.emailValidator = new EmailValidator(this.router);
     }
 
     protected initializeRoutes() {
@@ -71,8 +74,14 @@ class EmailController extends BaseApiController {
     gmailAuthCallback(path:string) {
         this.router.post(path, async (req, res) => {
             try {
+                const code = req.body.code;
+                if (!code) {
+                    const error = new Error("Code from Google's oauth callback is required");
+                    return this.sendErrorResponse(res, error, requiredField("Code"), 500);
+                }
+
                 const user = this.requestUtils.getRequestUser();
-                const token = await gmailService.getAccessToken(req.body.code);
+                const token = await gmailService.getAccessToken(code);
                 const tokenData = {
                     user: user.id,
                     email: user.email,
@@ -344,7 +353,11 @@ class EmailController extends BaseApiController {
     }
 
     sendMessage(path:string) {
-        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path,
+            this.emailValidator.validateEmail,
+            upload.array('attachments'),
+            this.userMiddleWare.setGmailToken
+        );
         this.router.post(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -375,7 +388,11 @@ class EmailController extends BaseApiController {
     }
 
     createDraft(path:string) {
-        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path,
+            this.emailValidator.validateDraft,
+            upload.array('attachments'),
+            this.userMiddleWare.setGmailToken
+        );
         this.router.post(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -406,7 +423,11 @@ class EmailController extends BaseApiController {
     }
 
     updateDraft(path:string) {
-        this.router.patch(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.patch(path,
+            this.emailValidator.validateDraft,
+            upload.array('attachments'),
+            this.userMiddleWare.setGmailToken
+        );
         this.router.patch(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -454,7 +475,7 @@ class EmailController extends BaseApiController {
     }
 
     sendDraft(path:string) {
-        this.router.post(path, this.userMiddleWare.setGmailToken);
+        this.router.post(path, this.emailValidator.validateDraft, this.userMiddleWare.setGmailToken);
         this.router.post(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -488,7 +509,11 @@ class EmailController extends BaseApiController {
     }
 
     replyMessage(path:string) {
-        this.router.post(path, upload.array('attachments'), this.userMiddleWare.setGmailToken);
+        this.router.post(path,
+            this.emailValidator.validateEmail,
+            upload.array('attachments'),
+            this.userMiddleWare.setGmailToken
+        );
         this.router.post(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();

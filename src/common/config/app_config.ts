@@ -6,7 +6,7 @@ const JoiValidatorOptions = {
     },
     stripUnknown: true,
     abortEarly: false,
-    allowUnknown: true
+    allowUnknown: false
 };
 
 const PaginationCustomLabels = {

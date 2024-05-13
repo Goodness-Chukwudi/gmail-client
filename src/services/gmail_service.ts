@@ -298,7 +298,7 @@ const getLabelStats = async (refreshToken: string, labelId: string, email?: stri
 
     return {
       success: true,
-      data: {messages_count: messagesCount}
+      data: {messages_count: messagesCount || "0"}
     }
     
   } catch (error:any) {
