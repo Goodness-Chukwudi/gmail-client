@@ -5,6 +5,7 @@ import AppValidator from "../middlewares/validators/AppValidator";
 import { userService, userRepository } from "../services/user_service";
 import { passwordRepository } from "../services/password_service";
 import { createMongooseTransaction } from "../common/utils/app_utils";
+import { gmailService, gmailTokenRepository } from "../services/gmail_service";
 
 class AuthController extends BaseApiController {
 
@@ -84,6 +85,43 @@ class AuthController extends BaseApiController {
                 this.sendErrorResponse(res, error, UNABLE_TO_LOGIN, 500);
             }
         });
+    }
+
+    //The callback url sent to google. This should be implemented on front end
+    googleAuthCallback(){
+        this.router.get('/gmail_oauth_callback', async (req, res) => {
+            try {
+                const code = req.query.code as string;
+                console.log("Code =========>  ", code)
+
+                return this.sendSuccessResponse(res);
+            } catch (error) {
+                return res.status(500).end();
+            }
+        })
+    }
+
+    googlePubSubCallback(){
+        this.router.post('/push_notifications', async (req, res) => {
+            try {
+                const data = req.body.message?.data;
+                if (data) {
+                    const buffer = Buffer.from(data, "base64");
+                    const messageString = buffer.toString("utf-8");
+                    const message = JSON.parse(messageString);
+
+                    const token:any = await gmailTokenRepository.findOne({email: message.emailAddress, is_active: true});
+                    if (token) {
+                        await gmailService.getLabelStats(token.refresh_token, "UNREAD", message.emailAddress);
+                        //Fetch mailbox updates and send to user
+                        //Send update to user using socket
+                    }
+                }
+                return this.sendSuccessResponse(res);
+            } catch (error) {
+                return res.status(500).end();
+            }
+        })
     }
 }
 

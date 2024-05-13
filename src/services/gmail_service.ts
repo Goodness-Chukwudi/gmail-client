@@ -293,8 +293,8 @@ const getLabelStats = async (refreshToken: string, labelId: string, email?: stri
   try {
     oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-    const messages = await gmail.users.messages.list({userId: email || 'me', labelIds: [labelId]});
-    const messagesCount = messages.data.messages?.length || 0;
+    const {data} = await gmail.users.messages.list({userId: email || 'me', labelIds: [labelId]});
+    const messagesCount = data.messages && data.messages.length >= 100 ? "99+" : data.messages?.length.toString();
 
     return {
       success: true,
