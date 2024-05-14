@@ -44,7 +44,7 @@ class App {
       
       //load public/non secured routes
       this.app.use(Env.API_PATH, appValidator.validateDefaultQueries);
-      this.app.use(Env.API_PATH + "/auth", AuthController);
+      this.app.use(Env.API_PATH + "/public", AuthController);
 
       //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       //  ALWAYS PREFIX EACH ENDPOINT WITH THE VALUE OF <API_PATH>

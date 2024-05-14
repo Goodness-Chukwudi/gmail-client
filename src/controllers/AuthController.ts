@@ -24,6 +24,8 @@ class AuthController extends BaseApiController {
     protected initializeRoutes() {
         this.login("/login"); //POST
         this.signup("/signup"); //POST
+        this.googleAuthCallback("/callbacks/gmail_oauth_callback"); //GET
+        this.googlePubSubCallback("/push_notifications"); //POST
     }
 
     signup(path:string) {
@@ -88,11 +90,11 @@ class AuthController extends BaseApiController {
     }
 
     //The callback url sent to google. This should be implemented on front end
-    googleAuthCallback(){
-        this.router.get('/gmail_oauth_callback', async (req, res) => {
+    googleAuthCallback(path:string){
+        this.router.get(path, async (req, res) => {
             try {
                 const code = req.query.code as string;
-                console.log("Code =========>  ", code)
+                console.log("Code =========>  ", code);
 
                 return this.sendSuccessResponse(res);
             } catch (error) {
@@ -101,8 +103,8 @@ class AuthController extends BaseApiController {
         })
     }
 
-    googlePubSubCallback(){
-        this.router.post('/push_notifications', async (req, res) => {
+    googlePubSubCallback(path:string){
+        this.router.post(path, async (req, res) => {
             try {
                 const data = req.body.message?.data;
                 if (data) {
@@ -112,7 +114,7 @@ class AuthController extends BaseApiController {
 
                     const token:any = await gmailTokenRepository.findOne({email: message.emailAddress, is_active: true});
                     if (token) {
-                        await gmailService.getLabelStats(token.refresh_token, "UNREAD", message.emailAddress);
+                        await gmailService.getLabelStats(token.refresh_token, ["UNREAD"], message.emailAddress);
                         //Fetch mailbox updates and send to user
                         //Send update to user using socket
                     }

@@ -1,18 +1,21 @@
 import Env from '../common/config/environment_variables';
 import { GmailTokenCredentials, IEmailMessage, IEmailMessageHeader, SendEmailParams } from '../data/interfaces/interfaces';
+import { EmailLabels } from '../data/interfaces/types';
 import GmailToken, { IGmailToken, ICreateGmailToken, IGmailTokenDocument} from '../models/gmail_api_token';
 import DBQuery from './DBQuery';
 import {google} from "googleapis";
-import https from "https";
+// import https from "https";
 
 const MailComposer = require("nodemailer/lib/mail-composer");
 
-const gmail = google.gmail('v1');
 const oauth2Client = new google.auth.OAuth2(
-    Env.GOOGLE_CLIENT_ID,
-    Env.GOOGLE_CLIENT_SECRET,
-    Env.GMAIL_CALLBACK_URL
+  Env.GOOGLE_CLIENT_ID,
+  Env.GOOGLE_CLIENT_SECRET,
+  Env.GMAIL_CALLBACK_URL
 );
+
+google.options({auth: oauth2Client})
+const gmail = google.gmail('v1');
 
 class GmailTokenRepository extends DBQuery<IGmailToken, ICreateGmailToken, IGmailTokenDocument> {
 
@@ -66,7 +69,6 @@ const listenForEmailUpdates = async (refreshToken: string, email?: string) => {
 
 const listMessageThreads = async (refreshToken: string, maxResults = 10, nextPageToken?: string) => {
     try {
-
       oauth2Client.setCredentials({ refresh_token: refreshToken })
 
       const response = await gmail.users.threads.list({userId: 'me', maxResults, pageToken: nextPageToken});
@@ -196,7 +198,7 @@ const getThreadMessages = async (refreshToken: string, threadId: string, search?
   }
 }
 
-const listMessages = async (refreshToken: string, labelId: "TRASH" | "STARRED" | "SENT" | "DRAFT", maxResults = 10, nextPageToken?: string) => {
+const listMessages = async (refreshToken: string, labelId:EmailLabels, maxResults = 10, nextPageToken?: string) => {
   try {
     oauth2Client.setCredentials({ refresh_token: refreshToken });
 
@@ -289,11 +291,11 @@ const listDrafts = async (refreshToken: string, maxResults = 10, nextPageToken?:
   }
 }
 
-const getLabelStats = async (refreshToken: string, labelId: string, email?: string) => {
+const getLabelStats = async (refreshToken: string, labelId: string[], email?: string) => {
   try {
     oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-    const {data} = await gmail.users.messages.list({userId: email || 'me', labelIds: [labelId]});
+    const {data} = await gmail.users.messages.list({userId: email || 'me', labelIds: labelId});
     const messagesCount = data.messages && data.messages.length >= 100 ? "99+" : data.messages?.length.toString();
 
     return {
@@ -690,35 +692,49 @@ const getReplyMessageParams = async (refreshToken: string, messageId: string, th
 }
 
 const revokeAppAccess = async (refreshToken: string) => {
-
-  return new Promise((resolve, reject) => {
-    try {
-      const token = "token=" + refreshToken;
-      const options = {
-        host: 'oauth2.googleapis.com',
-        port: '443',
-        path: '/revoke',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Content-Length': Buffer.byteLength(token)
-        }
-      };
-
-      const request = https.request(options, function (res) {
-        res.setEncoding('utf8');
-        res.on('data', data => resolve(data));
-      });
-
-      request.on('error', error => reject(error));
-
-      request.write(token);
-      request.end();
-      
-    } catch (error) {
-      reject(error);
+  try {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const response = await oauth2Client.revokeToken(refreshToken);
+    
+    return {
+      success: true,
+      data: response.data
     }
-  });
+  } catch (error:any) {
+    return {
+      success: false,
+      error: error.response?.data?.error || error
+    }
+  }
+
+  // return new Promise((resolve, reject) => {
+  //   try {
+  //     const token = "token=" + refreshToken;
+  //     const options = {
+  //       host: 'oauth2.googleapis.com',
+  //       port: '443',
+  //       path: '/revoke',
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/x-www-form-urlencoded',
+  //         'Content-Length': Buffer.byteLength(token)
+  //       }
+  //     };
+
+  //     const request = https.request(options, function (res) {
+  //       res.setEncoding('utf8');
+  //       res.on('data', data => resolve(data));
+  //     });
+
+  //     request.on('error', error => reject(error));
+
+  //     request.write(token);
+  //     request.end();
+      
+  //   } catch (error) {
+  //     reject(error);
+  //   }
+  // });
 }
 
 function extractMessagesHeaders(headers: any[]) {

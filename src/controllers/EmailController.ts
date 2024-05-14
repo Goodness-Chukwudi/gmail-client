@@ -37,7 +37,7 @@ class EmailController extends BaseApiController {
         this.gmailAuthCallback("/gmail_oauth_callback"); //POST
         this.listMessageThreads("/threads"); //GET
         this.getThreadMessages("/threads/:id"); //GET
-        this.listMessages("/"); //GET
+        this.listMessagesByLabels("/"); //GET
         this.listDraftMessages("/drafts"); //GET
         this.getMessageLabelStats("/stats"); //GET
         this.getMessageDetails("/:id/details"); //GET
@@ -102,7 +102,7 @@ class EmailController extends BaseApiController {
 
 
     listMessageThreads(path:string) {
-        this.router.get(path,this.userMiddleWare.setGmailToken);
+        this.router.get(path, this.userMiddleWare.setGmailToken);
         this.router.get(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -143,14 +143,14 @@ class EmailController extends BaseApiController {
     }
 
 
-    listMessages(path:string) {
+    listMessagesByLabels(path:string) {
         this.router.get(path,this.userMiddleWare.setGmailToken);
         this.router.get(path, async (req, res) => {
             try {
                 const label:any = req.query.label;
-                const labels = ["TRASH", "STARRED", "SENT", "DRAFT"];
+                const labels = ["TRASH", "STARRED", "SENT", "DRAFT", "UNREAD", "IMPORTANT", "INBOX"];
                 if (!labels.includes(label)) {
-                    const message = "Label must be either of " + labels.join();
+                    const message = "Label must be either of " + labels.join(", ");
                     const error = new Error(message);
                     return this.sendErrorResponse(res, error, badRequestError(message), 400);
                 }
@@ -206,7 +206,7 @@ class EmailController extends BaseApiController {
                 const gmailToken = this.requestUtils.getGmailToken();
                 const user = this.requestUtils.getRequestUser();
 
-                const response = await gmailService.getLabelStats(gmailToken.token, req.query.label.toString());
+                const response = await gmailService.getLabelStats(gmailToken.token, req.query.label.toString().split(","));
                 if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
                 return this.sendSuccessResponse(res, response.data);
@@ -325,7 +325,7 @@ class EmailController extends BaseApiController {
                 const gmailToken = this.requestUtils.getGmailToken();
                 const user = this.requestUtils.getRequestUser();
 
-                const response = await gmailService.batchDelete(gmailToken.token, req.body.ids);
+                const response = await gmailService.batchDelete(gmailToken.token, req.body.message_ids);
                 if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
 
                 return this.sendSuccessResponse(res);
@@ -570,8 +570,7 @@ class EmailController extends BaseApiController {
     private async handleGmailApiErrors(res:Response, response:Record<string,any>, userId: string) {
         try {
             const error = new Error(response.error.message);
-    
-            if (response.error.code == 403 || response.error.code == 401) {
+            if (response.error.code == 403 || response.error.code == 401 || response.error == "invalid_grant") {
                 const consentPageUrl = await gmailService.getGmailConsentUrl(userId, GmailAuthorizationScopes);
                 return this.sendErrorResponse(res, error, GMAIL_OAUTH_CONSENT_REQUIRED, 400, undefined, {consentPageUrl});
             }
