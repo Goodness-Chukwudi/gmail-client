@@ -12,6 +12,8 @@ class App {
 
     public app: Express;
     private authMiddleware: AuthMiddleware;
+    private appRoutes: AppRoutes;
+    private appValidator: AppValidator;
 
     constructor() {
       this.app = express();
@@ -27,12 +29,11 @@ class App {
       this.app.use(compression());
 
       this.authMiddleware = new AuthMiddleware(this.app);
+      this.appRoutes = new AppRoutes(this.app);
+      this.appValidator = new AppValidator(this.app);
     }
 
     private plugInRoutes() {
-      const appRoutes = new AppRoutes(this.app);
-      const appValidator = new AppValidator(this.app);
-    
       this.app.get("/", (req, res) => {
         res.status(200).send("<h1>Successful</h1>");
       });
@@ -42,8 +43,8 @@ class App {
         res.status(200).send(response);
       });
       
+      this.app.use(Env.API_PATH, this.appValidator.validateDefaultQueries);
       //load public/non secured routes
-      this.app.use(Env.API_PATH, appValidator.validateDefaultQueries);
       this.app.use(Env.API_PATH + "/public", AuthController);
 
       //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -55,7 +56,7 @@ class App {
       
       //Initialize other routes
       //These routes are protected by the auth guard
-      appRoutes.initializeRoutes();
+      this.appRoutes.initializeRoutes();
 
       //return a 404 for unspecified/unmatched routes
       this.app.all("*", (req, res) => {

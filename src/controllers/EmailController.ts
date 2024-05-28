@@ -354,8 +354,8 @@ class EmailController extends BaseApiController {
 
     sendMessage(path:string) {
         this.router.post(path,
-            this.emailValidator.validateEmail,
             upload.array('attachments'),
+            this.emailValidator.validateEmail,
             this.userMiddleWare.setGmailToken
         );
         this.router.post(path, async (req, res) => {
@@ -369,9 +369,6 @@ class EmailController extends BaseApiController {
                     recipient: body.recipient,
                     cc: body.cc,
                     bcc: body.bcc,
-                    in_reply_to: body.in_reply_to,
-                    references: body.references,
-                    threadId: body.threadId,
                     body: body.email_body,
                     subject: body.subject,
                     attachments: attachments
@@ -389,8 +386,8 @@ class EmailController extends BaseApiController {
 
     createDraft(path:string) {
         this.router.post(path,
-            this.emailValidator.validateDraft,
             upload.array('attachments'),
+            this.emailValidator.validateDraft,
             this.userMiddleWare.setGmailToken
         );
         this.router.post(path, async (req, res) => {
@@ -404,9 +401,6 @@ class EmailController extends BaseApiController {
                     recipient: body.recipient,
                     cc: body.cc,
                     bcc: body.bcc,
-                    in_reply_to: body.in_reply_to,
-                    references: body.references,
-                    threadId: body.threadId,
                     body: body.email_body,
                     subject: body.subject,
                     attachments: attachments
@@ -424,8 +418,8 @@ class EmailController extends BaseApiController {
 
     updateDraft(path:string) {
         this.router.patch(path,
-            this.emailValidator.validateDraft,
             upload.array('attachments'),
+            this.emailValidator.validateDraft,
             this.userMiddleWare.setGmailToken
         );
         this.router.patch(path, async (req, res) => {
@@ -439,9 +433,6 @@ class EmailController extends BaseApiController {
                     recipient: body.recipient,
                     cc: body.cc,
                     bcc: body.bcc,
-                    in_reply_to: body.in_reply_to,
-                    references: body.references,
-                    threadId: body.threadId,
                     body: body.email_body,
                     subject: body.subject,
                     attachments: attachments
@@ -475,7 +466,11 @@ class EmailController extends BaseApiController {
     }
 
     sendDraft(path:string) {
-        this.router.post(path, this.emailValidator.validateDraft, this.userMiddleWare.setGmailToken);
+        this.router.post(path,
+            upload.array('attachments'),
+            this.emailValidator.validateDraft,
+            this.userMiddleWare.setGmailToken
+        );
         this.router.post(path, async (req, res) => {
             try {
                 const gmailToken = this.requestUtils.getGmailToken();
@@ -487,16 +482,15 @@ class EmailController extends BaseApiController {
                     recipient: body.recipient,
                     cc: body.cc,
                     bcc: body.bcc,
-                    in_reply_to: body.in_reply_to,
-                    references: body.references,
-                    threadId: body.threadId,
                     body: body.email_body,
                     subject: body.subject,
                     attachments: attachments
                 }
 
-                const updateResponse = await gmailService.updateDraft(gmailToken.token, req.params.id, message);
-                if (!updateResponse.success) return await this.handleGmailApiErrors(res, updateResponse, user.id);
+                if (Object.keys(message).length > 0) {
+                    const updateResponse = await gmailService.updateDraft(gmailToken.token, req.params.id, message);
+                    if (!updateResponse.success) return await this.handleGmailApiErrors(res, updateResponse, user.id);
+                }
 
                 const response = await gmailService.sendDraft(gmailToken.token, req.params.id);
                 if (!response.success) return await this.handleGmailApiErrors(res, response, user.id);
@@ -510,8 +504,8 @@ class EmailController extends BaseApiController {
 
     replyMessage(path:string) {
         this.router.post(path,
-            this.emailValidator.validateEmail,
             upload.array('attachments'),
+            this.emailValidator.validateEmail,
             this.userMiddleWare.setGmailToken
         );
         this.router.post(path, async (req, res) => {
@@ -525,14 +519,14 @@ class EmailController extends BaseApiController {
                     recipient: body.recipient,
                     cc: body.cc,
                     bcc: body.bcc,
-                    threadId: body.threadId,
                     body: body.email_body,
-                    attachments: attachments
+                    subject: body.subject,
+                    attachments: attachments,
+                    threadId: req.params.threadId
                 }
                 
                 const messageId = req.params.id;
                 const threadId = req.params.threadId;
-                body.threadId = threadId;
 
                 const messageParams = await gmailService.getReplyMessageParams(gmailToken.token, messageId, threadId);
                 if (!messageParams.success) return await this.handleGmailApiErrors(res, messageParams, user.id);

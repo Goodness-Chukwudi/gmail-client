@@ -102,29 +102,11 @@ const getTokenFromRequest = (req: Request): string => {
     return jwt;
 }
 
-/**
- * Generates an otp. Returns 123456 in development environment
- * @param {number} length a number that specifies the length of the generated code. Default is 6
- * @returns {string} an alphanumeric string of the specified length
-*/
-const generateOTP = (length:number = 6): string => {
-    try {
-        if (Env.ENVIRONMENT == ENVIRONMENTS.DEV) {
-            return "123456";
-        }
-        return getCode(length);
-        
-    } catch (error) {
-        throw error
-    }
-}
-
 export {
     getTokenFromRequest,
     validateHashedData,
     hashData,
     createDefaultPassword,
     verifyJwtToken,
-    createAuthToken,
-    generateOTP,
+    createAuthToken
 };

@@ -16,7 +16,6 @@ class EmailValidator extends BaseRouterMiddleware {
     validateEmail = async ( req: Request, res: Response, next: NextFunction ) => {
         try {
             const body = req.body;
-
             body.recipient = JSON.parse(body.recipient);
             body.cc = JSON.parse(body.cc);
             body.bcc = JSON.parse(body.bcc);
@@ -25,7 +24,7 @@ class EmailValidator extends BaseRouterMiddleware {
                 recipient: Joi.array().items(Joi.string().email()).unique().min(1).required(),
                 cc: Joi.array().items(Joi.string().email()).unique().min(1),
                 bcc: Joi.array().items(Joi.string().email()).unique().min(1),
-                body: Joi.string().required(),
+                email_body: Joi.string().required(),
                 subject: Joi.string()
             });
             
@@ -49,7 +48,7 @@ class EmailValidator extends BaseRouterMiddleware {
                 recipient: Joi.array().items(Joi.string().email()).unique().min(1),
                 cc: Joi.array().items(Joi.string().email()).unique().min(1),
                 bcc: Joi.array().items(Joi.string().email()).unique().min(1),
-                body: Joi.string().required(),
+                email_body: Joi.string(),
                 subject: Joi.string()
             });
             
